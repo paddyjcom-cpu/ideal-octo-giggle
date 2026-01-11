@@ -1,0 +1,5 @@
+{
+  "name": "ResellFlow AI",
+  "description": "A comprehensive SaaS platform for modern resellers.",
+  "requestFramePermissions": ["camera"]
+}
