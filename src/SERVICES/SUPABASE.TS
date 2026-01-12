@@ -1,2 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
-export const supabase = createClient('https://ufzeimniqplvniflycmg.supabase.co/', 'sb_publishable_mGzTyDJomZDJngwTKbdYQw_d5E0iJx3');
+
+// These credentials connect your app to your specific database project
+const supabaseUrl = 'https://ufzeimniqplvniflycmg.supabase.co/';
+const supabaseKey = 'sb_publishable_mGzTyDJomZDJngwTKbdYQw_d5E0iJx3';
+
+export const supabase = createClient(supabaseUrl, supabaseKey);
