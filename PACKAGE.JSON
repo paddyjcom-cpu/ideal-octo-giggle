@@ -5,11 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite,build",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@google/genai": "^1.35.0",
+    "build": "tsc && vite,build
+"@google/genai": "^1.35.0",
     "@supabase/supabase-js": "^2.45.4",
     "lucide-react": "^0.562.0",
     "react": "^19.0.0",
