@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { LayoutDashboard, Package, Settings, TrendingUp, User, ArrowLeft, Loader2, Cloud, Sparkles, Code } from 'lucide-react';
-import { supabase } from "./services/supabase";
+import { supabase } from "SERVICES/services/supabase";
 import { Product, Stats, UserProfile } from './types';
 import DashboardView from './components/DashboardView';
 import InventoryView from './components/InventoryView';
