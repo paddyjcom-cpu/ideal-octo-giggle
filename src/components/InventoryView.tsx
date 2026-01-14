@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Product, SubscriptionTier, UserProfile } from '../types';
 import { Plus, Search, Edit2, Trash2, X, FileSpreadsheet, ChevronLeft, Image as ImageIcon, Package, Sparkles, Loader2 } from 'lucide-react';
-import { generateProductDescription } from '../services/geminiService';
 
 interface Props {
   user: UserProfile;
