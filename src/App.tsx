@@ -4,7 +4,6 @@ import { supabase } from "/services/supabase";
 import { Product, Stats, UserProfile } from './types';
 import DashboardView from './components/DashboardView';
 import InventoryView from './components/InventoryView';
-import LaunchPadView from './components/LaunchPadView';
 import ProfileModal from './components/ProfileModal';
 import SettingsDropdown from './components/SettingsDropdown';
 import StatsDetailModal from './components/StatsDetailModal';
