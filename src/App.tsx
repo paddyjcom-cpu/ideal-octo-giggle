@@ -2,9 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { LayoutDashboard, Package, Settings, TrendingUp, User, ArrowLeft, Loader2, Cloud, Sparkles, Code } from 'lucide-react';
 import { supabase } from "/services/supabase";
 import { Product, Stats, UserProfile } from './TYPES';
-import DashboardView from './DashboardView';
-import InventoryView from './InventoryView';
-import AuthView from './AuthView';
+import DashboardView from '/components/DashboardView';
+import InventoryView from '/components/InventoryView';
+import AuthView from '/components/AuthView';
 import { loadProductsFromSupabase, saveProductToSupabase, deleteProductFromSupabase, clearUserSupabaseData } from './dbService';
 
 const App: React.FC = () => {
