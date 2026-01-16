@@ -102,23 +102,23 @@ const App: React.FC = () => {
               <h3 className="text-xl font-bold text-slate-800">Stats Overview</h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
                   <p className="text-slate-500 text-sm font-semibold mb-2">Total Revenue</p>
                   <p className="text-3xl font-black text-slate-900">{user.currency}{stats.totalRevenue}</p>
                 </div>
                 
-                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
                   <p className="text-slate-500 text-sm font-semibold mb-2">Total Profit</p>
                   <p className="text-3xl font-black text-green-600">{user.currency}{stats.totalProfit}</p>
                 </div>
                 
-                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
                   <p className="text-slate-500 text-sm font-semibold mb-2">Active Listings</p>
                   <p className="text-3xl font-black text-indigo-600">{stats.activeListings}</p>
                 </div>
                 
-                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                  <p className="text-sm text-slate-500 font-semibold mb-2">Items Sold</p>
+                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                  <p className="text-slate-500 text-sm font-semibold mb-2">Items Sold</p>
                   <p className="text-3xl font-black text-slate-900">{stats.soldItemsCount}</p>
                 </div>
               </div>
@@ -127,7 +127,7 @@ const App: React.FC = () => {
                 <h4 className="text-lg font-bold text-slate-800 mb-4">Recent Products</h4>
                 <div className="space-y-3">
                   {products.map(product => (
-                    <div key={product.id} className="flex justify-between items-center p-4 bg-slate-50 rounded-xl">
+                    <div key={product.id} className="flex justify-between items-center p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
                       <div>
                         <p className="font-bold text-slate-900">{product.name}</p>
                         <p className="text-sm text-slate-500">Cost: {user.currency}{product.cost} | List: {user.currency}{product.listPrice}</p>
@@ -149,7 +149,43 @@ const App: React.FC = () => {
           {activeTab === 'inventory' && (
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
               <h3 className="text-xl font-bold text-slate-800 mb-4">Inventory View</h3>
-              <p className="text-slate-600">Inventory component will go here</p>
+              <p className="text-slate-600 mb-6">Inventory component will go here</p>
+              
+              <div className="space-y-4">
+                {products.map(product => (
+                  <div key={product.id} className="p-6 bg-slate-50 rounded-xl border border-slate-200">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <h4 className="font-bold text-lg text-slate-900">{product.name}</h4>
+                        <p className="text-sm text-slate-500">Added: {new Date(product.dateAdded).toLocaleDateString()}</p>
+                      </div>
+                      <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                        product.status === 'Sold' 
+                          ? 'bg-green-100 text-green-700' 
+                          : 'bg-blue-100 text-blue-700'
+                      }`}>
+                        {product.status}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <p className="text-slate-500">Cost</p>
+                        <p className="font-bold text-slate-900">{user.currency}{product.cost}</p>
+                      </div>
+                      <div>
+                        <p className="text-slate-500">List Price</p>
+                        <p className="font-bold text-slate-900">{user.currency}{product.listPrice}</p>
+                      </div>
+                      <div>
+                        <p className="text-slate-500">Profit</p>
+                        <p className="font-bold text-green-600">
+                          {user.currency}{(product.soldPrice || product.listPrice) - product.cost}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
