@@ -14,15 +14,12 @@ interface Props {
 
 const PLATFORMS = ['eBay', 'Depop', 'Vinted', 'Grailed', 'Poshmark', 'Other'] as const;
 
-// Mock AI description generator
 const generateProductDescription = async (title: string, brand: string): Promise<string> => {
-  // Simulate API delay
   await new Promise(resolve => setTimeout(resolve, 1500));
-  
   return `${title} by ${brand}. This item is in excellent condition and ready to ship. Perfect for collectors and enthusiasts. Don't miss out on this opportunity to own a quality piece. Fast shipping and secure packaging guaranteed.`;
 };
 
-const InventoryView: React.FC<Props> = ({ user, products, onAddProduct, onUpdateProduct, onDeleteProduct, tier, onBack }) => {
+const InventoryView: React.FC<Props> = ({ user, products, onAddProduct, onUpdateProduct, onDeleteProduct }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -58,7 +55,7 @@ const InventoryView: React.FC<Props> = ({ user, products, onAddProduct, onUpdate
     const brand = brandInput?.value;
     
     if (!title) {
-      alert('Please enter a title first so AI knows what to describe!');
+      alert('Please enter a title first!');
       return;
     }
     
@@ -68,7 +65,7 @@ const InventoryView: React.FC<Props> = ({ user, products, onAddProduct, onUpdate
       setDescription(aiText);
     } catch (err) {
       console.error(err);
-      alert('AI failed to generate. Check your internet connection.');
+      alert('AI generation failed.');
     } finally {
       setIsGenerating(false);
     }
@@ -134,189 +131,211 @@ const InventoryView: React.FC<Props> = ({ user, products, onAddProduct, onUpdate
   };
 
   return (
-    <div className="space-y-8 pb-20">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-        <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
-          <div className="relative flex-1 sm:flex-initial">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input 
-              type="text" 
-              placeholder="Search items..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-11 pr-4 py-4 bg-white border border-slate-200 rounded-2xl text-sm focus:ring-4 focus:ring-indigo-100 outline-none w-full sm:w-72 transition-all font-bold text-slate-700 shadow-sm"
-            />
-          </div>
-          <button className="flex items-center gap-2 px-5 py-4 bg-white text-slate-700 border border-slate-200 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm hover:bg-slate-50" onClick={handleExportCSV}>
-            <FileSpreadsheet size={18} className="text-indigo-600" /> Export CSV
+    <div className="space-y-6 pb-24">
+      {/* Search and Actions */}
+      <div className="flex flex-col gap-3">
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+          <input 
+            type="text" 
+            placeholder="Search items..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-11 pr-4 py-3.5 bg-white border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-indigo-100 outline-none w-full transition-all font-semibold text-slate-700 shadow-sm"
+          />
+        </div>
+        <div className="flex gap-3">
+          <button 
+            className="flex items-center justify-center gap-2 px-4 py-3.5 bg-white text-slate-700 border border-slate-200 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm hover:bg-slate-50 flex-1" 
+            onClick={handleExportCSV}
+          >
+            <FileSpreadsheet size={16} className="text-indigo-600" /> Export
+          </button>
+          <button 
+            onClick={() => { setEditingProduct(null); setIsModalOpen(true); }} 
+            className="flex items-center justify-center gap-2 px-6 py-3.5 bg-indigo-600 text-white rounded-2xl text-sm font-black hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all flex-1"
+          >
+            <Plus size={20} /> New Item
           </button>
         </div>
-        <button onClick={() => { setEditingProduct(null); setIsModalOpen(true); }} className="flex items-center gap-2 px-8 py-4 bg-indigo-600 text-white rounded-2xl text-sm font-black hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all w-full sm:w-auto justify-center">
-          <Plus size={20} /> New Record
-        </button>
       </div>
 
-      <div className="bg-white rounded-[3rem] shadow-sm border border-slate-100 overflow-hidden">
-        {products.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[900px]">
-              <thead>
-                <tr className="bg-slate-50/50 border-b border-slate-100">
-                  <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Product</th>
-                  <th className="px-6 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Channel</th>
-                  <th className="px-6 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Pricing</th>
-                  <th className="px-6 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                  <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {filteredProducts.map(product => (
-                  <tr key={product.id} className="hover:bg-slate-50/30 transition-colors group">
-                    <td className="px-10 py-6">
-                      <div className="flex items-center gap-5">
-                        <img src={product.imageUrl} className="w-16 h-16 rounded-2xl object-cover bg-slate-100 border border-slate-100 shadow-sm" alt={product.title} />
-                        <div>
-                          <p className="text-sm font-black text-slate-900 leading-tight">{product.title}</p>
-                          <p className="text-[10px] text-slate-400 font-bold uppercase mt-1.5">{product.brand} • {product.category}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-6 text-center">
-                      <span className="text-[10px] font-black px-4 py-1.5 bg-slate-50 border border-slate-200 text-slate-600 rounded-xl uppercase">
-                        {product.platform || 'Other'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-6">
+      {/* Products Grid */}
+      {products.length > 0 ? (
+        <div className="grid grid-cols-1 gap-4">
+          {filteredProducts.map(product => (
+            <div key={product.id} className="bg-white rounded-3xl shadow-sm border border-slate-100 p-4 hover:shadow-md transition-all">
+              <div className="flex gap-4">
+                <img 
+                  src={product.imageUrl} 
+                  className="w-24 h-24 rounded-2xl object-cover bg-slate-100 border border-slate-100 shadow-sm flex-shrink-0" 
+                  alt={product.title} 
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-black text-slate-900 truncate">{product.title}</h3>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">{product.brand} • {product.category}</p>
+                    </div>
+                    <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full flex-shrink-0 ${
+                      product.status === 'Available' ? 'bg-indigo-50 text-indigo-600' : 
+                      product.status === 'Sold' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'
+                    }`}>
+                      {product.status}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div>
                       <p className="text-sm font-black text-slate-900">{user.currency}{product.listPrice.toFixed(2)}</p>
                       {product.status === 'Sold' && (
                         <p className="text-xs font-black text-emerald-600">Sold: {user.currency}{(product.soldPrice ?? product.listPrice).toFixed(2)}</p>
                       )}
-                    </td>
-                    <td className="px-6 py-6">
-                      <span className={`text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full ${
-                        product.status === 'Available' ? 'bg-indigo-50 text-indigo-600' : 
-                        product.status === 'Sold' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'
-                      }`}>
-                        {product.status}
+                      <span className="text-[9px] font-black px-2 py-0.5 bg-slate-50 border border-slate-200 text-slate-600 rounded-lg uppercase inline-block mt-1">
+                        {product.platform || 'Other'}
                       </span>
-                    </td>
-                    <td className="px-10 py-6 text-right">
-                      <div className="flex items-center justify-end gap-3">
-                        <button onClick={() => { setEditingProduct(product); setIsModalOpen(true); }} className="p-3 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"><Edit2 size={18} /></button>
-                        <button onClick={() => onDeleteProduct(product.id)} className="p-3 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"><Trash2 size={18} /></button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="p-24 flex flex-col items-center justify-center text-center space-y-6">
-            <div className="w-24 h-24 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600">
-              <Package size={40} />
+                    </div>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => { setEditingProduct(product); setIsModalOpen(true); }} 
+                        className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                      <button 
+                        onClick={() => onDeleteProduct(product.id)} 
+                        className="p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="space-y-2">
-              <h3 className="text-2xl font-black text-slate-900 tracking-tight">Cloud inventory is empty</h3>
-              <p className="text-slate-500 font-medium max-w-xs mx-auto">Add your first listing to start tracking sales and generating AI descriptions.</p>
-            </div>
-            <button onClick={() => { setEditingProduct(null); setIsModalOpen(true); }} className="px-10 py-4 bg-indigo-600 text-white rounded-2xl text-sm font-black shadow-xl shadow-indigo-100">Add Item</button>
+          ))}
+        </div>
+      ) : (
+        <div className="py-20 flex flex-col items-center justify-center text-center space-y-4 bg-white rounded-3xl border border-slate-100">
+          <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600">
+            <Package size={32} />
           </div>
-        )}
-      </div>
+          <div className="space-y-1">
+            <h3 className="text-lg font-black text-slate-900">No items yet</h3>
+            <p className="text-slate-500 font-medium text-sm max-w-xs">Add your first listing to start tracking.</p>
+          </div>
+          <button 
+            onClick={() => { setEditingProduct(null); setIsModalOpen(true); }} 
+            className="px-8 py-3 bg-indigo-600 text-white rounded-2xl text-sm font-black shadow-lg shadow-indigo-100"
+          >
+            Add Item
+          </button>
+        </div>
+      )}
 
+      {/* Modal - Same as before but optimized */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
-          <div className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden flex flex-col max-h-[95vh] border border-slate-100">
-            <div className="p-10 border-b border-slate-100 flex items-center justify-between shrink-0">
-              <h3 className="text-2xl font-black text-slate-900 tracking-tight">{editingProduct ? 'Update Item' : 'Create Listing'}</h3>
-              <button onClick={() => setIsModalOpen(false)} className="p-3 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-all"><X size={24} /></button>
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white w-full md:max-w-2xl md:rounded-[3rem] rounded-t-[3rem] shadow-2xl overflow-hidden flex flex-col max-h-[95vh] border border-slate-100">
+            <div className="p-6 md:p-8 border-b border-slate-100 flex items-center justify-between shrink-0">
+              <h3 className="text-xl font-black text-slate-900">{editingProduct ? 'Update Item' : 'Create Listing'}</h3>
+              <button onClick={() => setIsModalOpen(false)} className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-all">
+                <X size={24} />
+              </button>
             </div>
             
-            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-10 space-y-10">
-              <div className="space-y-4">
+            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6">
+              <div className="space-y-3">
                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Cover Photo</label>
-                <div onClick={() => fileInputRef.current?.click()} className="relative h-56 bg-slate-50 border-2 border-dashed border-slate-200 rounded-[2rem] overflow-hidden cursor-pointer hover:bg-slate-100 flex items-center justify-center text-center p-8 transition-all group">
+                <div onClick={() => fileInputRef.current?.click()} className="relative h-48 bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl overflow-hidden cursor-pointer hover:bg-slate-100 flex items-center justify-center text-center p-6 transition-all group">
                   {selectedImage ? (
                     <img src={selectedImage} className="absolute inset-0 w-full h-full object-cover transition-transform group-hover:scale-105" alt="Product" />
                   ) : (
-                    <div className="space-y-3">
-                      <ImageIcon size={32} className="mx-auto text-slate-300" />
-                      <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Upload Item Image</p>
+                    <div className="space-y-2">
+                      <ImageIcon size={28} className="mx-auto text-slate-300" />
+                      <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Upload Image</p>
                     </div>
                   )}
                 </div>
                 <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
               </div>
 
-              <div className="grid grid-cols-2 gap-8">
-                <div className="col-span-2">
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Listing Title</label>
-                  <input name="title" required type="text" defaultValue={editingProduct?.title} className="w-full px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold text-slate-700 focus:ring-4 focus:ring-indigo-50" placeholder="e.g. Nike Dunk Low Retro Black" />
-                </div>
+              <div className="space-y-5">
                 <div>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Brand</label>
-                  <input name="brand" type="text" defaultValue={editingProduct?.brand} className="w-full px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold text-slate-700" placeholder="e.g. Nike" />
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Title</label>
+                  <input name="title" required type="text" defaultValue={editingProduct?.title} className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold text-slate-700 focus:ring-2 focus:ring-indigo-50 text-sm" placeholder="Nike Dunk Low" />
                 </div>
-                <div>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Category</label>
-                  <input name="category" type="text" defaultValue={editingProduct?.category} className="w-full px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold text-slate-700" placeholder="e.g. Footwear" />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Marketplace</label>
-                  <select name="platform" defaultValue={editingProduct?.platform || 'eBay'} className="w-full px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold text-slate-700">
-                    {PLATFORMS.map(p => <option key={p} value={p}>{p}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Current Status</label>
-                  <select name="status" defaultValue={editingProduct?.status || 'Available'} onChange={(e) => setFormStatus(e.target.value as any)} className="w-full px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold text-slate-700">
-                    <option value="Available">Available</option>
-                    <option value="Sold">Sold</option>
-                    <option value="Draft">Draft</option>
-                  </select>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Brand</label>
+                    <input name="brand" type="text" defaultValue={editingProduct?.brand} className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold text-slate-700 text-sm" placeholder="Nike" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Category</label>
+                    <input name="category" type="text" defaultValue={editingProduct?.category} className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold text-slate-700 text-sm" placeholder="Footwear" />
+                  </div>
                 </div>
 
-                <div className="col-span-2 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Platform</label>
+                    <select name="platform" defaultValue={editingProduct?.platform || 'eBay'} className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold text-slate-700 text-sm">
+                      {PLATFORMS.map(p => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Status</label>
+                    <select name="status" defaultValue={editingProduct?.status || 'Available'} onChange={(e) => setFormStatus(e.target.value as any)} className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold text-slate-700 text-sm">
+                      <option value="Available">Available</option>
+                      <option value="Sold">Sold</option>
+                      <option value="Draft">Draft</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
                   <div className="flex items-center justify-between px-1">
-                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">AI Description Generator</label>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">AI Description</label>
                     <button 
                       type="button"
                       onClick={handleMagicWrite}
                       disabled={isGenerating}
-                      className="flex items-center gap-2 text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:text-indigo-700 transition-colors disabled:opacity-50"
+                      className="flex items-center gap-1.5 text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:text-indigo-700 transition-colors disabled:opacity-50"
                     >
-                      {isGenerating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                      {isGenerating ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
                       Magic Write
                     </button>
                   </div>
                   <textarea 
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Enter details or click Magic Write to generate..."
-                    className="w-full px-6 py-5 bg-slate-50 border border-slate-200 rounded-[2rem] min-h-[160px] outline-none font-medium text-slate-700 text-sm leading-relaxed"
+                    placeholder="Enter details or click Magic Write..."
+                    className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl min-h-[120px] outline-none font-medium text-slate-700 text-sm leading-relaxed"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Cost ({user.currency})</label>
-                  <input name="cost" required type="number" step="0.01" defaultValue={editingProduct?.cost} className="w-full px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold text-slate-700" />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Cost ({user.currency})</label>
+                    <input name="cost" required type="number" step="0.01" defaultValue={editingProduct?.cost} className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold text-slate-700 text-sm" />
+                  </div>
+                  {formStatus === 'Sold' ? (
+                    <div>
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Sold ({user.currency})</label>
+                      <input name="soldPrice" required type="number" step="0.01" defaultValue={editingProduct?.soldPrice || editingProduct?.listPrice} className="w-full px-5 py-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl outline-none font-bold text-emerald-700 text-sm" />
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">List ({user.currency})</label>
+                      <input name="listPrice" required type="number" step="0.01" defaultValue={editingProduct?.listPrice} className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold text-slate-700 text-sm" />
+                    </div>
+                  )}
                 </div>
-                {formStatus === 'Sold' ? (
-                  <div>
-                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Sold Price ({user.currency})</label>
-                    <input name="soldPrice" required type="number" step="0.01" defaultValue={editingProduct?.soldPrice || editingProduct?.listPrice} className="w-full px-6 py-4 bg-emerald-50 border border-emerald-200 rounded-2xl outline-none font-bold text-emerald-700" />
-                  </div>
-                ) : (
-                  <div>
-                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">List Price ({user.currency})</label>
-                    <input name="listPrice" required type="number" step="0.01" defaultValue={editingProduct?.listPrice} className="w-full px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold text-slate-700" />
-                  </div>
-                )}
               </div>
-              <div className="pt-4 flex gap-6 sticky bottom-0 bg-white pb-2">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-5 bg-slate-100 text-slate-600 rounded-2xl font-black transition-all hover:bg-slate-200">Discard</button>
-                <button type="submit" className="flex-1 py-5 bg-indigo-600 text-white rounded-2xl font-black shadow-xl shadow-indigo-100 transition-all hover:bg-indigo-700">Save Listing</button>
+
+              <div className="flex gap-4 sticky bottom-0 bg-white pt-4 pb-2">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-black transition-all hover:bg-slate-200 text-sm">Cancel</button>
+                <button type="submit" className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black shadow-lg shadow-indigo-100 transition-all hover:bg-indigo-700 text-sm">Save</button>
               </div>
             </form>
           </div>
