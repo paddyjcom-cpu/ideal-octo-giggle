@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Product, SubscriptionTier, UserProfile } from '../types';
-import { Plus, Search, Edit2, Trash2, X, FileSpreadsheet, ChevronLeft, Image as ImageIcon, Package, Sparkles, Loader2 } from 'lucide-react';
+import { Product, SubscriptionTier, UserProfile } from '../TYPES';
+import { Plus, Search, Edit2, Trash2, X, FileSpreadsheet, Package, Sparkles, Loader2, Image as ImageIcon } from 'lucide-react';
 
 interface Props {
   user: UserProfile;
@@ -13,6 +13,14 @@ interface Props {
 }
 
 const PLATFORMS = ['eBay', 'Depop', 'Vinted', 'Grailed', 'Poshmark', 'Other'] as const;
+
+// Mock AI description generator
+const generateProductDescription = async (title: string, brand: string): Promise<string> => {
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 1500));
+  
+  return `${title} by ${brand}. This item is in excellent condition and ready to ship. Perfect for collectors and enthusiasts. Don't miss out on this opportunity to own a quality piece. Fast shipping and secure packaging guaranteed.`;
+};
 
 const InventoryView: React.FC<Props> = ({ user, products, onAddProduct, onUpdateProduct, onDeleteProduct, tier, onBack }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -50,7 +58,7 @@ const InventoryView: React.FC<Props> = ({ user, products, onAddProduct, onUpdate
     const brand = brandInput?.value;
     
     if (!title) {
-      alert("Please enter a title first so AI knows what to describe!");
+      alert('Please enter a title first so AI knows what to describe!');
       return;
     }
     
@@ -60,7 +68,7 @@ const InventoryView: React.FC<Props> = ({ user, products, onAddProduct, onUpdate
       setDescription(aiText);
     } catch (err) {
       console.error(err);
-      alert("AI failed to generate. Check your internet connection.");
+      alert('AI failed to generate. Check your internet connection.');
     } finally {
       setIsGenerating(false);
     }
@@ -80,9 +88,9 @@ const InventoryView: React.FC<Props> = ({ user, products, onAddProduct, onUpdate
     const rows = products.map(p => [
       p.id, p.title, p.brand, p.category, p.cost, p.listPrice, p.soldPrice || 0, p.status, p.platform || 'N/A', p.dateAdded, p.dateSold || ''
     ]);
-    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    const csvContent = [headers, ...rows].map(e => e.join(',')).join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
+    const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = `resellflow_ledger_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
@@ -126,7 +134,7 @@ const InventoryView: React.FC<Props> = ({ user, products, onAddProduct, onUpdate
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 pb-20">
+    <div className="space-y-8 pb-20">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
         <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
           <div className="relative flex-1 sm:flex-initial">
@@ -166,7 +174,7 @@ const InventoryView: React.FC<Props> = ({ user, products, onAddProduct, onUpdate
                   <tr key={product.id} className="hover:bg-slate-50/30 transition-colors group">
                     <td className="px-10 py-6">
                       <div className="flex items-center gap-5">
-                        <img src={product.imageUrl} className="w-16 h-16 rounded-2xl object-cover bg-slate-100 border border-slate-100 shadow-sm" />
+                        <img src={product.imageUrl} className="w-16 h-16 rounded-2xl object-cover bg-slate-100 border border-slate-100 shadow-sm" alt={product.title} />
                         <div>
                           <p className="text-sm font-black text-slate-900 leading-tight">{product.title}</p>
                           <p className="text-[10px] text-slate-400 font-bold uppercase mt-1.5">{product.brand} • {product.category}</p>
@@ -218,19 +226,19 @@ const InventoryView: React.FC<Props> = ({ user, products, onAddProduct, onUpdate
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in zoom-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
           <div className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden flex flex-col max-h-[95vh] border border-slate-100">
             <div className="p-10 border-b border-slate-100 flex items-center justify-between shrink-0">
               <h3 className="text-2xl font-black text-slate-900 tracking-tight">{editingProduct ? 'Update Item' : 'Create Listing'}</h3>
               <button onClick={() => setIsModalOpen(false)} className="p-3 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-all"><X size={24} /></button>
             </div>
             
-            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto custom-scrollbar p-10 space-y-10">
+            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-10 space-y-10">
               <div className="space-y-4">
                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Cover Photo</label>
                 <div onClick={() => fileInputRef.current?.click()} className="relative h-56 bg-slate-50 border-2 border-dashed border-slate-200 rounded-[2rem] overflow-hidden cursor-pointer hover:bg-slate-100 flex items-center justify-center text-center p-8 transition-all group">
                   {selectedImage ? (
-                    <img src={selectedImage} className="absolute inset-0 w-full h-full object-cover transition-transform group-hover:scale-105" />
+                    <img src={selectedImage} className="absolute inset-0 w-full h-full object-cover transition-transform group-hover:scale-105" alt="Product" />
                   ) : (
                     <div className="space-y-3">
                       <ImageIcon size={32} className="mx-auto text-slate-300" />
@@ -286,7 +294,7 @@ const InventoryView: React.FC<Props> = ({ user, products, onAddProduct, onUpdate
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="Enter details or click Magic Write to generate..."
-                    className="w-full px-6 py-5 bg-slate-50 border border-slate-200 rounded-[2rem] min-h-[160px] outline-none font-medium text-slate-700 text-sm leading-relaxed custom-scrollbar"
+                    className="w-full px-6 py-5 bg-slate-50 border border-slate-200 rounded-[2rem] min-h-[160px] outline-none font-medium text-slate-700 text-sm leading-relaxed"
                   />
                 </div>
 
