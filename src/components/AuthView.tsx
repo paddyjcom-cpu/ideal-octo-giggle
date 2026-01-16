@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { supabase } from "../services/supabase";
-import { TrendingUp, Mail, Lock, ArrowRight, Sparkles, Loader2, ShieldCheck, User, AlertCircle, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { supabase } from '../services/supabase';
+import { TrendingUp, Mail, Lock, ArrowRight, Loader2, User, AlertCircle, RefreshCw, CheckCircle2 } from 'lucide-react';
 
 interface Props {
   onLogin: (email: string) => void;
@@ -36,7 +36,7 @@ const AuthView: React.FC<Props> = () => {
           },
         });
         if (signUpError) throw signUpError;
-        setSuccess("Success! Check your email inbox (and spam folder) for the verification link.");
+        setSuccess('Success! Check your email inbox (and spam folder) for the verification link.');
         setIsSignup(false);
       } else {
         const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -48,14 +48,14 @@ const AuthView: React.FC<Props> = () => {
             setShowResend(true);
           }
           if (signInError.message.toLowerCase().includes('invalid login credentials')) {
-             throw new Error("Invalid credentials. Try again or sign up for a new account if you haven't yet.");
+             throw new Error('Invalid credentials. Try again or sign up for a new account if you haven\'t yet.');
           }
           throw signInError;
         }
       }
     } catch (err: any) {
       console.error(err);
-      setError(err.message || "An authentication error occurred.");
+      setError(err.message || 'An authentication error occurred.');
     } finally {
       setIsLoading(false);
     }
@@ -63,7 +63,7 @@ const AuthView: React.FC<Props> = () => {
 
   const handleResendConfirmation = async () => {
     if (!email) {
-      setError("Please enter your email address first.");
+      setError('Please enter your email address first.');
       return;
     }
     setIsResending(true);
@@ -74,10 +74,10 @@ const AuthView: React.FC<Props> = () => {
         email: email,
       });
       if (resendError) throw resendError;
-      setSuccess("A new confirmation link has been sent to your email!");
+      setSuccess('A new confirmation link has been sent to your email!');
       setShowResend(false);
     } catch (err: any) {
-      setError("Failed to resend confirmation: " + err.message);
+      setError('Failed to resend confirmation: ' + err.message);
     } finally {
       setIsResending(false);
     }
@@ -89,7 +89,7 @@ const AuthView: React.FC<Props> = () => {
       <div className="absolute bottom-0 right-0 w-96 h-96 bg-violet-200 rounded-full blur-[120px] translate-x-1/2 translate-y-1/2 opacity-50"></div>
 
       <div className="w-full max-w-md relative">
-        <div className="bg-white rounded-[3rem] shadow-2xl shadow-indigo-100/50 border border-slate-100 p-10 space-y-8 animate-in fade-in zoom-in duration-500">
+        <div className="bg-white rounded-[3rem] shadow-2xl shadow-indigo-100/50 border border-slate-100 p-10 space-y-8">
           <div className="text-center space-y-3">
             <div className="w-16 h-16 bg-indigo-600 rounded-3xl flex items-center justify-center shadow-xl shadow-indigo-200 mx-auto mb-6 transform -rotate-6">
               <TrendingUp className="text-white w-8 h-8" />
@@ -103,14 +103,14 @@ const AuthView: React.FC<Props> = () => {
           </div>
 
           {success && (
-            <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl flex items-start gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl flex items-start gap-3">
               <CheckCircle2 size={18} className="text-emerald-500 shrink-0 mt-0.5" />
               <p className="text-xs font-bold text-emerald-700 leading-relaxed">{success}</p>
             </div>
           )}
 
           {error && (
-            <div className="bg-red-50 border border-red-100 p-4 rounded-2xl flex flex-col gap-3 animate-in shake duration-300">
+            <div className="bg-red-50 border border-red-100 p-4 rounded-2xl flex flex-col gap-3">
               <div className="flex items-start gap-3">
                 <AlertCircle size={18} className="text-red-500 shrink-0 mt-0.5" />
                 <p className="text-xs font-bold text-red-600 leading-relaxed">{error}</p>
@@ -130,7 +130,7 @@ const AuthView: React.FC<Props> = () => {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {isSignup && (
-              <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
+              <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Full Name</label>
                 <div className="relative">
                   <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
