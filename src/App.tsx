@@ -1,55 +1,54 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { LayoutDashboard, Package, Settings, TrendingUp, User, Loader2, Cloud, Menu, X } from 'lucide-react';
-import { supabase } from './services/supabase';
+import { LayoutDashboard, Package, TrendingUp, User, Loader2, Cloud, Menu, X, Settings } from 'lucide-react';
 import { Product, Stats, UserProfile } from './TYPES';
-import DashboardView from './components/DashboardView';
-import InventoryView from './components/InventoryView';
-import AuthView from './components/AuthView';
-import { loadProductsFromSupabase, saveProductToSupabase, deleteProductFromSupabase } from './services/dbService';
 
+// Temporarily bypass Supabase to test
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isLoading, setIsLoading] = useState(true);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [user, setUser] = useState<UserProfile | null>(null);
-  const [products, setProducts] = useState<Product[]>([]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => handleUserSession(session));
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => handleUserSession(session));
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const handleUserSession = async (session: any) => {
-    if (session) {
-      const { user: authUser } = session;
-      const profile: UserProfile = {
-        id: authUser.id,
-        email: authUser.email || '',
-        name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'Reseller',
-        tier: 'Growth',
-        subscriptionActive: true,
-        currency: authUser.user_metadata?.currency || '£'
-      };
-      setUser(profile);
-      setIsAuthenticated(true);
-      try {
-        const cloudProducts = await loadProductsFromSupabase(authUser.id);
-        setProducts(cloudProducts);
-      } catch (error) {
-        console.error('Error loading products:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    } else {
-      setUser(null);
-      setIsAuthenticated(false);
-      setProducts([]);
-      setIsLoading(false);
-    }
+  // Mock user for testing
+  const user: UserProfile = {
+    id: 'test-123',
+    email: 'test@test.com',
+    name: 'Test User',
+    tier: 'Growth',
+    subscriptionActive: true,
+    currency: '£'
   };
+
+  // Mock products
+  const [products] = useState<Product[]>([
+    {
+      id: '1',
+      title: 'Nike Sneakers',
+      brand: 'Nike',
+      category: 'Footwear',
+      platform: 'eBay',
+      cost: 50,
+      listPrice: 100,
+      status: 'Available',
+      dateAdded: '2025-01-15',
+      imageUrl: 'https://picsum.photos/seed/nike/400/300'
+    },
+    {
+      id: '2',
+      title: 'Vintage Jacket',
+      brand: 'Carhartt',
+      category: 'Clothing',
+      platform: 'Depop',
+      cost: 30,
+      listPrice: 80,
+      soldPrice: 80,
+      status: 'Sold',
+      dateAdded: '2025-01-10',
+      dateSold: '2025-01-16',
+      imageUrl: 'https://picsum.photos/seed/jacket/400/300'
+    }
+  ]);
 
   const stats: Stats = useMemo(() => {
     const soldItems = products.filter(p => p.status === 'Sold');
@@ -63,37 +62,31 @@ const App: React.FC = () => {
     };
   }, [products]);
 
-  const addProduct = async (p: Product) => {
-    setIsSyncing(true);
-    try {
-      setProducts(prev => [p, ...prev]);
-      if (user) await saveProductToSupabase(user.id, p);
-    } finally {
-      setIsSyncing(false);
-    }
-  };
+  useEffect(() => {
+    // Simulate loading
+    const timer = setTimeout(() => {
+      setIsAuthenticated(true);
+      setIsLoading(false);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, []);
 
-  const updateProduct = async (p: Product) => {
-    setIsSyncing(true);
-    try {
-      setProducts(prev => prev.map(item => item.id === p.id ? p : item));
-      if (user) await saveProductToSupabase(user.id, p);
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  const deleteProduct = async (id: string) => {
-    if (confirm('Delete this product?')) {
-      setIsSyncing(true);
-      try {
-        setProducts(prev => prev.filter(p => p.id !== id));
-        if (user) await deleteProductFromSupabase(user.id, id);
-      } finally {
-        setIsSyncing(false);
-      }
-    }
-  };
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-red-50 p-6">
+        <div className="bg-white p-8 rounded-3xl shadow-lg max-w-md">
+          <h2 className="text-xl font-black text-red-600 mb-4">Error Loading App</h2>
+          <p className="text-slate-600 mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="w-full py-3 bg-indigo-600 text-white rounded-2xl font-bold"
+          >
+            Reload App
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -104,10 +97,6 @@ const App: React.FC = () => {
     );
   }
 
-  if (!isAuthenticated) {
-    return <AuthView onLogin={() => {}} />;
-  }
-
   return (
     <div className="flex h-screen bg-gradient-to-br from-slate-50 to-indigo-50/30 overflow-hidden">
       {/* Mobile Header */}
@@ -116,7 +105,6 @@ const App: React.FC = () => {
           <div className="flex items-center gap-3">
             <TrendingUp className="text-indigo-600" size={24} />
             <h1 className="text-lg font-black text-slate-900">ResellFlow</h1>
-            {isSyncing && <Cloud className="animate-pulse text-indigo-400" size={16} />}
           </div>
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -127,7 +115,7 @@ const App: React.FC = () => {
         </div>
       </div>
 
-      {/* Mobile Menu Overlay */}
+      {/* Mobile Menu */}
       {mobileMenuOpen && (
         <div className="md:hidden fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)}>
           <div className="absolute right-0 top-0 bottom-0 w-80 bg-white shadow-2xl" onClick={e => e.stopPropagation()}>
@@ -136,9 +124,7 @@ const App: React.FC = () => {
                 <button
                   onClick={() => { setActiveTab('dashboard'); setMobileMenuOpen(false); }}
                   className={`w-full flex items-center gap-3 p-4 font-bold rounded-xl transition-colors ${
-                    activeTab === 'dashboard'
-                      ? 'bg-indigo-50 text-indigo-600'
-                      : 'text-slate-600 hover:bg-slate-50'
+                    activeTab === 'dashboard' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50'
                   }`}
                 >
                   <LayoutDashboard size={20} />
@@ -147,22 +133,19 @@ const App: React.FC = () => {
                 <button
                   onClick={() => { setActiveTab('inventory'); setMobileMenuOpen(false); }}
                   className={`w-full flex items-center gap-3 p-4 font-bold rounded-xl transition-colors ${
-                    activeTab === 'inventory'
-                      ? 'bg-indigo-50 text-indigo-600'
-                      : 'text-slate-600 hover:bg-slate-50'
+                    activeTab === 'inventory' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50'
                   }`}
                 >
                   <Package size={20} />
                   Inventory
                 </button>
               </nav>
-
               <div className="pt-6 border-t border-slate-100">
                 <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
                   <User className="text-slate-400" size={20} />
                   <div className="flex-1">
-                    <p className="text-sm font-bold text-slate-800">{user?.name}</p>
-                    <p className="text-xs text-slate-500">{user?.tier} Plan</p>
+                    <p className="text-sm font-bold text-slate-800">{user.name}</p>
+                    <p className="text-xs text-slate-500">{user.tier} Plan</p>
                   </div>
                 </div>
               </div>
@@ -176,15 +159,12 @@ const App: React.FC = () => {
         <div className="p-8 border-b border-slate-100 flex items-center gap-3">
           <TrendingUp className="text-indigo-600" />
           <h1 className="text-xl font-black text-slate-900">ResellFlow</h1>
-          {isSyncing && <Cloud className="animate-pulse text-indigo-400" size={16} />}
         </div>
         <nav className="flex-1 p-6 space-y-2">
           <button
             onClick={() => setActiveTab('dashboard')}
             className={`w-full flex items-center gap-3 p-4 font-bold rounded-xl transition-colors ${
-              activeTab === 'dashboard'
-                ? 'bg-indigo-50 text-indigo-600'
-                : 'text-slate-600 hover:bg-slate-50'
+              activeTab === 'dashboard' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50'
             }`}
           >
             <LayoutDashboard size={20} />
@@ -193,9 +173,7 @@ const App: React.FC = () => {
           <button
             onClick={() => setActiveTab('inventory')}
             className={`w-full flex items-center gap-3 p-4 font-bold rounded-xl transition-colors ${
-              activeTab === 'inventory'
-                ? 'bg-indigo-50 text-indigo-600'
-                : 'text-slate-600 hover:bg-slate-50'
+              activeTab === 'inventory' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50'
             }`}
           >
             <Package size={20} />
@@ -206,8 +184,8 @@ const App: React.FC = () => {
           <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
             <User className="text-slate-400" size={20} />
             <div className="flex-1">
-              <p className="text-sm font-bold text-slate-800">{user?.name}</p>
-              <p className="text-xs text-slate-500">{user?.tier} Plan</p>
+              <p className="text-sm font-bold text-slate-800">{user.name}</p>
+              <p className="text-xs text-slate-500">{user.tier} Plan</p>
             </div>
           </div>
         </div>
@@ -220,32 +198,107 @@ const App: React.FC = () => {
           <Settings className="text-slate-400 cursor-pointer hover:text-slate-600" />
         </header>
 
-        <div className="p-4 md:p-10">
-          {activeTab === 'dashboard' && (
-            <DashboardView
-              user={user!}
-              stats={stats}
-              products={products}
-              onActiveClick={() => setActiveTab('inventory')}
-              onRevenueClick={() => {}}
-              onProfitClick={() => {}}
-              onSoldClick={() => {}}
-            />
-          )}
-          {activeTab === 'inventory' && (
-            <InventoryView
-              user={user!}
-              products={products}
-              onAddProduct={addProduct}
-              onUpdateProduct={updateProduct}
-              onDeleteProduct={deleteProduct}
-              tier="Growth"
-            />
+        <div className="p-4 md:p-10 pb-24">
+          {activeTab === 'dashboard' ? (
+            <div className="space-y-6">
+              {/* Stats Cards */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-100 h-32">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="p-2.5 rounded-2xl bg-emerald-50 shadow-sm">
+                      <DollarSign size={22} className="text-emerald-600" />
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-slate-400 text-[9px] font-black uppercase tracking-widest mb-1">Revenue</p>
+                    <h4 className="text-xl font-black text-slate-900">{user.currency}{stats.totalRevenue.toFixed(2)}</h4>
+                  </div>
+                </div>
+
+                <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-100 h-32">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="p-2.5 rounded-2xl bg-blue-50 shadow-sm">
+                      <TrendingUp size={22} className="text-blue-600" />
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-slate-400 text-[9px] font-black uppercase tracking-widest mb-1">Profit</p>
+                    <h4 className="text-xl font-black text-slate-900">{user.currency}{stats.totalProfit.toFixed(2)}</h4>
+                  </div>
+                </div>
+
+                <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-100 h-32">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="p-2.5 rounded-2xl bg-indigo-50 shadow-sm">
+                      <Package size={22} className="text-indigo-600" />
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-slate-400 text-[9px] font-black uppercase tracking-widest mb-1">Active</p>
+                    <h4 className="text-xl font-black text-slate-900">{stats.activeListings}</h4>
+                  </div>
+                </div>
+
+                <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-100 h-32">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="p-2.5 rounded-2xl bg-violet-50 shadow-sm">
+                      <ShoppingCart size={22} className="text-violet-600" />
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-slate-400 text-[9px] font-black uppercase tracking-widest mb-1">Sold</p>
+                    <h4 className="text-xl font-black text-slate-900">{stats.soldItemsCount}</h4>
+                  </div>
+                </div>
+              </div>
+
+              {/* Products List */}
+              <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
+                <h3 className="font-black text-slate-800 mb-4">Recent Products</h3>
+                <div className="space-y-3">
+                  {products.map(product => (
+                    <div key={product.id} className="flex gap-4 p-4 bg-slate-50 rounded-2xl">
+                      <img src={product.imageUrl} className="w-16 h-16 rounded-xl object-cover" alt={product.title} />
+                      <div className="flex-1">
+                        <p className="font-bold text-sm text-slate-900">{product.title}</p>
+                        <p className="text-xs text-slate-500">{product.brand} • {user.currency}{product.listPrice}</p>
+                      </div>
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold self-start ${
+                        product.status === 'Sold' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
+                      }`}>
+                        {product.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100 text-center">
+              <Package size={48} className="mx-auto text-indigo-400 mb-4" />
+              <h3 className="text-lg font-black text-slate-900 mb-2">Inventory View</h3>
+              <p className="text-slate-600">Coming soon - Add your products here</p>
+            </div>
           )}
         </div>
       </main>
     </div>
   );
 };
+
+const DollarSign = ({ size, className }: { size: number; className: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <line x1="12" y1="1" x2="12" y2="23"></line>
+    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+  </svg>
+);
+
+const ShoppingCart = ({ size, className }: { size: number; className: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <circle cx="9" cy="21" r="1"></circle>
+    <circle cx="20" cy="21" r="1"></circle>
+    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+  </svg>
+);
 
 export default App;
