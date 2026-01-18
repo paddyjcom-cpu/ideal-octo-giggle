@@ -3,6 +3,7 @@ import { TrendingUp, DollarSign, Package, ShoppingCart, Layers, Plus, Loader2, M
 import { supabase } from './services/supabase';
 import { Product, Stats, UserProfile } from './TYPES';
 import { loadProductsFromSupabase, saveProductToSupabase, deleteProductFromSupabase } from './services/dbService';
+import './index.css'
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
