@@ -119,7 +119,7 @@ const App: React.FC = () => {
             <div className="w-16 h-16 bg-teal-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <TrendingUp className="text-teal-400" size={32} />
             </div>
-            <h1 className="text-2xl font-black text-teal-400 mb-2">ResellFlow</h1>
+            <h1 className="text-2xl font-black text-teal-400 mb-2 text-centre">ResellFlow</h1>
             <p className="text-gray-400 text-sm">Track. Analyze. Profit.</p>
           </div>
           
