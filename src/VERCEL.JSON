@@ -4,6 +4,6 @@
   "trailingSlash": false,
   "framework": "vite",
   "rewrites": [
-    { "source": "/(.*)", "destination": "/src/index.html" }
+    { "source": "/(.*)", "destination": "/src/index.css" }
   ]
 }
