@@ -1,323 +1,332 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { LayoutDashboard, Package, TrendingUp, User, Loader2, Menu, X, Settings, DollarSign, ShoppingCart, ArrowUpRight, Plus, Search, Edit2, Trash2 } from 'lucide-react';
+import { TrendingUp, DollarSign, Package, ShoppingCart, Layers, Plus, Loader2, Mail, Lock, X } from 'lucide-react';
+import { supabase } from './services/supabase';
 import { Product, Stats, UserProfile } from './TYPES';
+import { loadProductsFromSupabase, saveProductToSupabase, deleteProductFromSupabase } from './services/dbService';
 
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [selectedStat, setSelectedStat] = useState<string | null>(null);
+  
+  // Auth state
+  const [showAuth, setShowAuth] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isSignup, setIsSignup] = useState(false);
+  const [authLoading, setAuthLoading] = useState(false);
 
-  const user: UserProfile = {
-    id: 'test-123',
-    email: 'paddy@resellflow.com',
-    name: 'Paddy Jenkins',
-    tier: 'Growth',
-    subscriptionActive: true,
-    currency: '£'
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => handleUserSession(session));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => handleUserSession(session));
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleUserSession = async (session: any) => {
+    if (session) {
+      const { user: authUser } = session;
+      const profile: UserProfile = {
+        id: authUser.id,
+        email: authUser.email || '',
+        name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'User',
+        tier: 'Growth',
+        subscriptionActive: true,
+        currency: '$'
+      };
+      setUser(profile);
+      setIsAuthenticated(true);
+      try {
+        const cloudProducts = await loadProductsFromSupabase(authUser.id);
+        setProducts(cloudProducts);
+      } catch (error) {
+        console.error('Error loading products:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    } else {
+      setUser(null);
+      setIsAuthenticated(false);
+      setProducts([]);
+      setIsLoading(false);
+      setShowAuth(true);
+    }
   };
 
-  const [products, setProducts] = useState<Product[]>([
-    {
-      id: '1',
-      title: 'Nike Dunk Low Retro Black',
-      brand: 'Nike',
-      category: 'Footwear',
-      platform: 'eBay',
-      cost: 50,
-      listPrice: 100,
-      status: 'Available',
-      dateAdded: '2025-01-15',
-      imageUrl: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=300&h=300&fit=crop'
-    },
-    {
-      id: '2',
-      title: 'Vintage Carhartt Jacket',
-      brand: 'Carhartt',
-      category: 'Clothing',
-      platform: 'Depop',
-      cost: 30,
-      listPrice: 80,
-      soldPrice: 80,
-      status: 'Sold',
-      dateAdded: '2025-01-10',
-      dateSold: '2025-01-16',
-      imageUrl: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=300&h=300&fit=crop'
-    },
-    {
-      id: '3',
-      title: 'Adidas Originals Hoodie',
-      brand: 'Adidas',
-      category: 'Clothing',
-      platform: 'Vinted',
-      cost: 25,
-      listPrice: 65,
-      status: 'Available',
-      dateAdded: '2025-01-12',
-      imageUrl: 'https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=300&h=300&fit=crop'
+  const handleAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthLoading(true);
+    try {
+      if (isSignup) {
+        const { error } = await supabase.auth.signUp({ email, password });
+        if (error) throw error;
+        alert('Check your email for verification link!');
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+      }
+    } catch (err: any) {
+      alert(err.message || 'Authentication failed');
+    } finally {
+      setAuthLoading(false);
     }
-  ]);
+  };
 
   const stats: Stats = useMemo(() => {
     const soldItems = products.filter(p => p.status === 'Sold');
     const revenue = soldItems.reduce((acc, p) => acc + (p.soldPrice || p.listPrice || 0), 0);
     const costs = soldItems.reduce((acc, p) => acc + (p.cost || 0), 0);
+    const inventoryValue = products.filter(p => p.status === 'Available').reduce((acc, p) => acc + p.listPrice, 0);
     return {
       totalRevenue: revenue,
       totalProfit: revenue - costs,
       activeListings: products.filter(p => p.status === 'Available').length,
-      soldItemsCount: soldItems.length
+      soldItemsCount: soldItems.length,
+      inventoryValue
     };
   }, [products]);
 
-  const filteredProducts = products.filter(p =>
-    p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.brand.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 800);
-    return () => clearTimeout(timer);
-  }, []);
+  const getFilteredProducts = () => {
+    if (!selectedStat) return [];
+    switch (selectedStat) {
+      case 'revenue':
+      case 'profit':
+        return products.filter(p => p.status === 'Sold');
+      case 'inventory':
+        return products.filter(p => p.status === 'Available');
+      case 'sold':
+        return products.filter(p => p.status === 'Sold');
+      default:
+        return [];
+    }
+  };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600">
-        <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-12 shadow-2xl">
-          <Loader2 className="animate-spin text-white mb-4 mx-auto" size={56} />
-          <h2 className="font-black text-white text-xl tracking-tight">Loading ResellFlow...</h2>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#0a1628]">
+        <Loader2 className="animate-spin text-teal-400 mb-4" size={56} />
+        <h2 className="font-black text-white text-xl">Loading ResellFlow...</h2>
+      </div>
+    );
+  }
+
+  if (showAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0a1628] p-6">
+        <div className="w-full max-w-md bg-[#0f1d35] rounded-3xl shadow-2xl border border-gray-800 p-8">
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 bg-teal-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <TrendingUp className="text-teal-400" size={32} />
+            </div>
+            <h1 className="text-2xl font-black text-teal-400 mb-2">ResellFlow</h1>
+            <p className="text-gray-400 text-sm">Track. Analyze. Profit.</p>
+          </div>
+          
+          <form onSubmit={handleAuth} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Email</label>
+              <div className="relative">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="w-full pl-12 pr-4 py-3.5 bg-[#0a1628] border border-gray-700 rounded-xl text-white focus:ring-2 focus:ring-teal-500 outline-none"
+                  placeholder="your@email.com"
+                />
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Password</label>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="w-full pl-12 pr-4 py-3.5 bg-[#0a1628] border border-gray-700 rounded-xl text-white focus:ring-2 focus:ring-teal-500 outline-none"
+                  placeholder="••••••••"
+                />
+              </div>
+            </div>
+            
+            <button
+              type="submit"
+              disabled={authLoading}
+              className="w-full py-4 bg-teal-500 text-white rounded-xl font-black hover:bg-teal-600 transition-all disabled:opacity-50"
+            >
+              {authLoading ? <Loader2 className="animate-spin mx-auto" size={20} /> : (isSignup ? 'Sign Up' : 'Sign In')}
+            </button>
+          </form>
+          
+          <button
+            onClick={() => setIsSignup(!isSignup)}
+            className="w-full mt-4 text-sm text-gray-400 hover:text-teal-400 transition-colors"
+          >
+            {isSignup ? 'Already have an account? Sign In' : 'Need an account? Sign Up'}
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-violet-500 via-purple-500 to-indigo-600 overflow-hidden">
-      {/* Mobile Header */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-xl border-b border-white/20 shadow-lg">
-        <div className="px-5 py-3.5 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-              <TrendingUp className="text-white" size={18} />
+    <div className="min-h-screen bg-[#0a1628] overflow-hidden">
+      {/* Header */}
+      <div className="bg-[#0f1d35] border-b border-gray-800">
+        <div className="max-w-7xl mx-auto px-5 py-5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-teal-500/20 rounded-2xl flex items-center justify-center">
+              <TrendingUp className="text-teal-400" size={24} strokeWidth={2.5} />
             </div>
-            <h1 className="text-base font-black text-slate-900">ResellFlow</h1>
+            <div>
+              <h1 className="text-xl font-black text-teal-400">ResellFlow</h1>
+              <p className="text-xs text-gray-500 font-medium">Track. Analyze. Profit.</p>
+            </div>
           </div>
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 hover:bg-slate-100 rounded-xl transition-colors"
-          >
-            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
+          <div className="flex items-center gap-2">
+            <button className="px-4 py-2.5 bg-gray-800/50 text-gray-300 rounded-xl text-sm font-bold border border-gray-700 hover:bg-gray-800 transition-all flex items-center gap-2">
+              <Plus size={18} />
+              <span className="hidden sm:inline">Add Item</span>
+            </button>
+            <button className="px-4 py-2.5 bg-teal-500 text-white rounded-xl text-sm font-bold hover:bg-teal-600 transition-all flex items-center gap-2">
+              <Plus size={18} />
+              <span className="hidden sm:inline">Log Sale</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Mobile Menu */}
-      {mobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 z-40" onClick={() => setMobileMenuOpen(false)}>
-          <div className="absolute inset-0 bg-slate-900/70 backdrop-blur-sm" />
-          <div className="absolute right-0 top-0 bottom-0 w-72 bg-white shadow-2xl" onClick={e => e.stopPropagation()}>
-            <div className="p-5 pt-20 space-y-5">
-              <nav className="space-y-1.5">
-                <button
-                  onClick={() => { setActiveTab('dashboard'); setMobileMenuOpen(false); }}
-                  className={`w-full flex items-center gap-3 p-3.5 font-bold rounded-xl transition-all text-sm ${
-                    activeTab === 'dashboard'
-                      ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg'
-                      : 'text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  <LayoutDashboard size={19} />
-                  Dashboard
-                </button>
-                <button
-                  onClick={() => { setActiveTab('inventory'); setMobileMenuOpen(false); }}
-                  className={`w-full flex items-center gap-3 p-3.5 font-bold rounded-xl transition-all text-sm ${
-                    activeTab === 'inventory'
-                      ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg'
-                      : 'text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  <Package size={19} />
-                  Inventory
-                </button>
-              </nav>
-              <div className="pt-5 border-t border-slate-100">
-                <div className="flex items-center gap-3 p-3 bg-gradient-to-br from-slate-50 to-indigo-50 rounded-xl">
-                  <div className="w-9 h-9 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg flex items-center justify-center text-white font-black text-xs">
-                    {user.name.charAt(0)}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-xs font-black text-slate-800">{user.name}</p>
-                    <p className="text-[10px] text-slate-500 font-semibold">{user.tier} Plan</p>
-                  </div>
-                </div>
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-5 py-6 space-y-5 pb-24">
+        {/* Total Revenue Card */}
+        <button
+          onClick={() => setSelectedStat(selectedStat === 'revenue' ? null : 'revenue')}
+          className="w-full bg-gradient-to-br from-[#0f1f3a] to-[#0a1628] rounded-3xl p-8 border border-gray-800/50 shadow-2xl hover:scale-[1.02] transition-all text-left"
+        >
+          <div className="flex items-start justify-between mb-6">
+            <div>
+              <p className="text-gray-400 text-sm font-semibold mb-3">Total Revenue</p>
+              <h2 className="text-6xl font-black text-white mb-4">${stats.totalRevenue.toLocaleString()}</h2>
+              <div className="flex items-center gap-2 text-teal-400">
+                <TrendingUp size={16} />
+                <span className="text-sm font-bold">Click to view details</span>
               </div>
             </div>
+            <div className="w-16 h-16 bg-teal-500/10 rounded-2xl flex items-center justify-center">
+              <DollarSign className="text-teal-400" size={32} strokeWidth={2.5} />
+            </div>
           </div>
-        </div>
-      )}
+        </button>
 
-      {/* Main Content - FULL SCREEN */}
-      <main className="flex-1 overflow-y-auto">
-        <header className="p-5 mt-14 md:mt-0 bg-white/10 backdrop-blur-xl flex justify-between items-center sticky top-0 z-10">
-          <h2 className="text-xl font-black text-white capitalize">{activeTab}</h2>
-          <button className="p-2 hover:bg-white/10 rounded-xl transition-colors">
-            <Settings size={20} className="text-white/80" />
-          </button>
-        </header>
-
-        <div className="p-5 pb-24">
-          {activeTab === 'dashboard' ? (
-            <div className="space-y-5 max-w-2xl mx-auto">
-              {/* Stats Cards - BIGGER & CENTERED */}
-              <div className="grid grid-cols-2 gap-4">
-                <button className="bg-white/95 backdrop-blur-sm p-6 rounded-3xl shadow-xl h-40 hover:scale-105 transition-all duration-300 text-left group">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="p-3.5 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-500 shadow-lg">
-                      <DollarSign size={26} className="text-white" strokeWidth={2.5} />
-                    </div>
-                    <ArrowUpRight size={18} className="text-slate-300 group-hover:text-emerald-500 transition-colors" />
-                  </div>
-                  <div>
-                    <p className="text-slate-400 text-[11px] font-black uppercase tracking-wider mb-1.5">Revenue</p>
-                    <h4 className="text-3xl font-black text-slate-900">{user.currency}{stats.totalRevenue.toFixed(2)}</h4>
-                  </div>
-                </button>
-
-                <button className="bg-white/95 backdrop-blur-sm p-6 rounded-3xl shadow-xl h-40 hover:scale-105 transition-all duration-300 text-left group">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="p-3.5 rounded-2xl bg-gradient-to-br from-blue-400 to-indigo-500 shadow-lg">
-                      <TrendingUp size={26} className="text-white" strokeWidth={2.5} />
-                    </div>
-                    <ArrowUpRight size={18} className="text-slate-300 group-hover:text-blue-500 transition-colors" />
-                  </div>
-                  <div>
-                    <p className="text-slate-400 text-[11px] font-black uppercase tracking-wider mb-1.5">Profit</p>
-                    <h4 className="text-3xl font-black text-slate-900">{user.currency}{stats.totalProfit.toFixed(2)}</h4>
-                  </div>
-                </button>
-
-                <button className="bg-white/95 backdrop-blur-sm p-6 rounded-3xl shadow-xl h-40 hover:scale-105 transition-all duration-300 text-left group">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="p-3.5 rounded-2xl bg-gradient-to-br from-indigo-400 to-purple-500 shadow-lg">
-                      <Package size={26} className="text-white" strokeWidth={2.5} />
-                    </div>
-                    <ArrowUpRight size={18} className="text-slate-300 group-hover:text-indigo-500 transition-colors" />
-                  </div>
-                  <div>
-                    <p className="text-slate-400 text-[11px] font-black uppercase tracking-wider mb-1.5">Active</p>
-                    <h4 className="text-3xl font-black text-slate-900">{stats.activeListings}</h4>
-                  </div>
-                </button>
-
-                <button className="bg-white/95 backdrop-blur-sm p-6 rounded-3xl shadow-xl h-40 hover:scale-105 transition-all duration-300 text-left group">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="p-3.5 rounded-2xl bg-gradient-to-br from-violet-400 to-purple-500 shadow-lg">
-                      <ShoppingCart size={26} className="text-white" strokeWidth={2.5} />
-                    </div>
-                    <ArrowUpRight size={18} className="text-slate-300 group-hover:text-violet-500 transition-colors" />
-                  </div>
-                  <div>
-                    <p className="text-slate-400 text-[11px] font-black uppercase tracking-wider mb-1.5">Sold</p>
-                    <h4 className="text-3xl font-black text-slate-900">{stats.soldItemsCount}</h4>
-                  </div>
-                </button>
+        {/* Total Profit Card */}
+        <button
+          onClick={() => setSelectedStat(selectedStat === 'profit' ? null : 'profit')}
+          className="w-full bg-gradient-to-br from-[#0f1f3a] to-[#0a1628] rounded-3xl p-8 border border-gray-800/50 shadow-2xl hover:scale-[1.02] transition-all text-left"
+        >
+          <div className="flex items-start justify-between mb-6">
+            <div>
+              <p className="text-gray-400 text-sm font-semibold mb-3">Total Profit</p>
+              <h2 className="text-6xl font-black text-white mb-4">${stats.totalProfit.toLocaleString()}</h2>
+              <div className="flex items-center gap-2 text-teal-400">
+                <TrendingUp size={16} />
+                <span className="text-sm font-bold">Click to view details</span>
               </div>
+            </div>
+            <div className="w-16 h-16 bg-teal-500/10 rounded-2xl flex items-center justify-center">
+              <TrendingUp className="text-teal-400" size={32} strokeWidth={2.5} />
+            </div>
+          </div>
+        </button>
 
-              {/* Recent Products - FULL WIDTH */}
-              <div className="bg-white/95 backdrop-blur-sm rounded-3xl p-6 shadow-xl">
-                <h3 className="font-black text-slate-800 text-lg mb-5">Recent Products</h3>
-                <div className="space-y-4">
-                  {products.slice(0, 3).map(product => (
-                    <div key={product.id} className="flex gap-4 p-4 bg-gradient-to-r from-slate-50 to-indigo-50/50 rounded-2xl hover:shadow-lg transition-all">
-                      <img src={product.imageUrl} className="w-16 h-16 rounded-xl object-cover shadow-md flex-shrink-0" alt={product.title} />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-black text-base text-slate-900 truncate mb-1">{product.title}</p>
-                        <p className="text-xs text-slate-500 font-bold mb-2">{product.brand}</p>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-black text-slate-900">{user.currency}{product.listPrice}</span>
-                          <span className="text-[10px] font-black px-2 py-0.5 bg-white border border-slate-200 text-slate-600 rounded uppercase">{product.platform}</span>
-                        </div>
+        {/* Inventory Value Card */}
+        <button
+          onClick={() => setSelectedStat(selectedStat === 'inventory' ? null : 'inventory')}
+          className="w-full bg-gradient-to-br from-[#0f1f3a] to-[#0a1628] rounded-3xl p-8 border border-gray-800/50 shadow-2xl hover:scale-[1.02] transition-all text-left"
+        >
+          <div className="flex items-start justify-between mb-6">
+            <div>
+              <p className="text-gray-400 text-sm font-semibold mb-3">Inventory Value</p>
+              <h2 className="text-6xl font-black text-white mb-4">${stats.inventoryValue?.toLocaleString() || 0}</h2>
+              <div className="flex items-center gap-2 text-teal-400">
+                <Package size={16} />
+                <span className="text-sm font-bold">{stats.activeListings} items available</span>
+              </div>
+            </div>
+            <div className="w-16 h-16 bg-teal-500/10 rounded-2xl flex items-center justify-center">
+              <Layers className="text-teal-400" size={32} strokeWidth={2.5} />
+            </div>
+          </div>
+        </button>
+
+        {/* Items Sold Card */}
+        <button
+          onClick={() => setSelectedStat(selectedStat === 'sold' ? null : 'sold')}
+          className="w-full bg-gradient-to-br from-[#0f1f3a] to-[#0a1628] rounded-3xl p-8 border border-gray-800/50 shadow-2xl hover:scale-[1.02] transition-all text-left"
+        >
+          <div className="flex items-start justify-between mb-6">
+            <div>
+              <p className="text-gray-400 text-sm font-semibold mb-3">Items Sold</p>
+              <h2 className="text-6xl font-black text-white mb-4">{stats.soldItemsCount}</h2>
+              <div className="flex items-center gap-2 text-teal-400">
+                <ShoppingCart size={16} />
+                <span className="text-sm font-bold">Click to view details</span>
+              </div>
+            </div>
+            <div className="w-16 h-16 bg-teal-500/10 rounded-2xl flex items-center justify-center">
+              <ShoppingCart className="text-teal-400" size={32} strokeWidth={2.5} />
+            </div>
+          </div>
+        </button>
+      </div>
+
+      {/* Details Modal */}
+      {selectedStat && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-sm" onClick={() => setSelectedStat(null)}>
+          <div className="bg-[#0f1d35] w-full sm:max-w-2xl sm:rounded-3xl rounded-t-3xl shadow-2xl border border-gray-800 max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="p-6 border-b border-gray-800 flex items-center justify-between sticky top-0 bg-[#0f1d35]">
+              <h3 className="text-xl font-black text-white capitalize">{selectedStat} Details</h3>
+              <button onClick={() => setSelectedStat(null)} className="p-2 hover:bg-gray-800 rounded-xl transition-colors">
+                <X className="text-gray-400" size={24} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              {getFilteredProducts().length > 0 ? (
+                getFilteredProducts().map(product => (
+                  <div key={product.id} className="bg-[#0a1628] rounded-2xl p-4 border border-gray-800">
+                    <div className="flex items-center gap-4">
+                      {product.imageUrl && (
+                        <img src={product.imageUrl} className="w-16 h-16 rounded-xl object-cover" alt={product.title} />
+                      )}
+                      <div className="flex-1">
+                        <p className="font-bold text-white">{product.title}</p>
+                        <p className="text-sm text-gray-400">{product.brand}</p>
+                        <p className="text-sm text-teal-400 font-bold mt-1">${product.listPrice}</p>
                       </div>
-                      <span className={`px-3 py-1.5 rounded-full text-xs font-black self-start ${
-                        product.status === 'Sold' ? 'bg-emerald-500 text-white' : 'bg-indigo-500 text-white'
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                        product.status === 'Sold' ? 'bg-teal-500/20 text-teal-400' : 'bg-gray-700 text-gray-300'
                       }`}>
                         {product.status}
                       </span>
                     </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-5 max-w-2xl mx-auto">
-              {/* Search Bar */}
-              <div className="relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/60" size={20} />
-                <input
-                  type="text"
-                  placeholder="Search your inventory..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-12 pr-4 py-4 bg-white/95 backdrop-blur-sm border-2 border-white/50 rounded-2xl text-base focus:ring-2 focus:ring-white outline-none font-bold text-slate-700 shadow-xl placeholder:text-slate-400"
-                />
-              </div>
-
-              {/* Products Grid */}
-              <div className="space-y-4">
-                {filteredProducts.map(product => (
-                  <div key={product.id} className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-xl p-5 hover:scale-[1.02] transition-all">
-                    <div className="flex gap-4">
-                      <img
-                        src={product.imageUrl}
-                        className="w-20 h-20 rounded-2xl object-cover shadow-lg flex-shrink-0"
-                        alt={product.title}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2 mb-3">
-                          <div className="flex-1 min-w-0">
-                            <h3 className="text-base font-black text-slate-900 truncate mb-1">{product.title}</h3>
-                            <p className="text-xs text-slate-500 font-bold uppercase">{product.brand} • {product.category}</p>
-                          </div>
-                          <span className={`text-[10px] font-black uppercase px-3 py-1.5 rounded-full flex-shrink-0 ${
-                            product.status === 'Available' ? 'bg-indigo-500 text-white' :
-                            product.status === 'Sold' ? 'bg-emerald-500 text-white' : 'bg-slate-400 text-white'
-                          }`}>
-                            {product.status}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-xl font-black text-slate-900 mb-1">{user.currency}{product.listPrice.toFixed(2)}</p>
-                            <span className="inline-block text-[10px] font-black px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg uppercase">
-                              {product.platform}
-                            </span>
-                          </div>
-                          <div className="flex gap-2">
-                            <button className="p-2.5 text-white bg-indigo-500 hover:bg-indigo-600 rounded-xl transition-all shadow-lg">
-                              <Edit2 size={16} />
-                            </button>
-                            <button className="p-2.5 text-white bg-red-500 hover:bg-red-600 rounded-xl transition-all shadow-lg">
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
                   </div>
-                ))}
-              </div>
-
-              {/* Add Button */}
-              <button className="fixed bottom-6 right-6 w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl shadow-2xl flex items-center justify-center hover:scale-110 transition-transform">
-                <Plus size={30} className="text-white" strokeWidth={3} />
-              </button>
+                ))
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-gray-500 font-medium">No items to display</p>
+                  <p className="text-sm text-gray-600 mt-2">Start adding products to see them here</p>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
-      </main>
+      )}
     </div>
   );
 };
 
-export default App;
+export default App;                     
