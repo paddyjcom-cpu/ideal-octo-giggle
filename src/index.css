@@ -11,10 +11,12 @@
     @apply antialiased;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
   }
 
   body {
-    @apply overflow-hidden bg-[#0a1628];
+    /* Changed overflow-hidden to overflow-x-hidden so you can still scroll down */
+    @apply overflow-x-hidden bg-[#0a1628];
   }
 
   /* Dark Theme Custom Scrollbar */
@@ -41,12 +43,7 @@
       @apply text-sm;
     }
   }
-
-  /* Smooth scrolling */
-  html {
-    scroll-behavior: smooth;
-  }
-}
+} /* Added missing closing brace for @layer base */
 
 @layer utilities {
   .custom-scrollbar {
@@ -79,7 +76,7 @@
 
   /* Gradient text utility */
   .gradient-text {
-    @apply bg-gradient-to-r from-teal-400 to-emerald-400 bg-clip-text text-transparent;
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-teal-400 to-emerald-400;
   }
 }
 
@@ -110,3 +107,4 @@
 
 .animate-slideIn {
   animation: slideIn 0.3s ease-out;
+}
